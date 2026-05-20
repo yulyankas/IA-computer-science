@@ -30,7 +30,33 @@ class Task:
             print("Updated.")
         conn.commit()
 
-    # def get_taskbyid(conn,self):
-    #     sql="SELECT*FROM task WHERE id=?"
-    #     conn = sqlite3.connect(db_path)
-    #     cursor = conn.cursor()  
+
+
+
+    def get_taskbyid(self,db_path):
+        sql="SELECT*FROM task WHERE id=?"
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(sql,(self.id,))  
+        row=cursor.fetchone()
+
+        if row is None:
+            return None
+        
+        task_id, task_deadline,task_priority = row
+        conn.close()
+        return Task (task_id,task_deadline, task_priority)
+    
+
+    def get_taskbyuser(conn, user_id):
+        sql = """
+        SELECT id, user, title, deadline, priority, estimated_minutes, status
+        FROM task
+        WHERE user = ?
+        AND date(deadline) >= date('now')
+        """
+        cursor = conn.cursor()
+        cursor.execute(sql, (user_id,))
+        return cursor.fetchall()
+
+        

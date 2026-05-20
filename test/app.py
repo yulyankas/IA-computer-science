@@ -2,6 +2,7 @@
 import flask
 from user import User
 from task import Task
+from event import Event
 from datetime import date, datetime
 from event import Event
 from pathlib import Path
@@ -17,7 +18,7 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"]="1" #allows google auth to work on loc
 app = flask.Flask(__name__)
 app.secret_key="dev_secret"        
 BASE_DIR = Path(__file__).resolve().parent
-CLIENTS_SECRET_FILE=BASE_DIR.parent/"credentials.json.json"       #credentials location
+CLIENTS_SECRET_FILE=BASE_DIR.parent/"credentials.config.json"       #credentials location
 
 
 SCOPES = [
@@ -72,8 +73,9 @@ def index():
     else:
         res = user.get ("name","user")
 
-
-    return "welcome"+"\n"+res
+    t1=Task().get_taskbyuser(conn,user_id)
+    
+    return "welcome"+"\n"+res+ Task.id(1)
 
 
 @app.route("/login")
@@ -150,7 +152,8 @@ def oauth2callback():
     )
     db_user=db_user.process_user(DB_PATH);
     print (db_user.__str__)
-
+    t1=Task(123,db_user,"llalalala",datetime(2026,2,18,9,10),1,90,"urgent")
+    print(t1)
     return flask.redirect("/")
 
 def get_user_info(access_token):
