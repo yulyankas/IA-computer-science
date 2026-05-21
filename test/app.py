@@ -13,6 +13,7 @@ import requests
 import google_auth_oauthlib.flow
 import pathlib
 import os
+from UserRepository import UserRepository
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"]="1" #allows google auth to work on local 
 
 app = flask.Flask(__name__)
@@ -68,14 +69,21 @@ def index():
     #return "111"+strResult
     
     user=flask.session.get("user")
+    appUser = User()
     if not user:
         res = str("<a href=\"/login\">Enter with Google</a>")
     else:
-        res = user.get ("name","user")
+        appUser = UserRepository.get_user_by_email (DB_PATH, user.get ("email"))
+        #res = user.get ("name","user")
+        res = str(appUser.name, appUser.email)
+        tasks = appUser.get_user_tasks(DB_PATH)
+        for task in tasks:
+            res+="\n"+task.title
 
-    t1=Task().get_taskbyuser(conn,user_id)
     
-    return "welcome"+"\n"+res+ Task.id(1)
+    
+    
+    return "welcome"+"\n"+res+ "\n<a href=\"\\dashboard\">Go to dashboard</>"
 
 
 @app.route("/login")

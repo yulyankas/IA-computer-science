@@ -1,4 +1,5 @@
 import sqlite3
+from task import Task
 class User:
     def __init__(self,id:int,email:str,name:str):
         self.id=id
@@ -54,7 +55,7 @@ class User:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(sql, (self.email,))
-        row = cursor.fetchone()
+        rows = cursor.fetchone()
     
         if row is None:
             return None
@@ -72,6 +73,26 @@ class User:
         else:
             return select_user
         
+
+    def get_user_tasks (self, db_path):
+        sql = """
+        SELECT id, user, title, deadline, priority, estimated_minutes, status
+        FROM task
+        WHERE user = ?
+        AND date(deadline) >= date('now')
+        """
+        conn=sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(sql, (self.id,))
+        rows=cursor.fetchone()
+
+        tasks = []
+        if rows is None:
+            return None
+        for row in rows:
+            task_id, task_user, task_title, task_deadline, task_priority, task_estimated,task_status = row
+            tasks.append (Task (task_id, self, task_title, task_deadline, task_priority,task_estimated, task_status))
+        return tasks
     
 
 

@@ -16,12 +16,13 @@ class Event:
     def connectDB():
         return sqlite3.connect("DB/study_schedule_DB01.db")
 
-    def update_event(self, conn):
+    def update_event(self, db_path):
         sql = """
         UPDATE event
         SET title = ?, user = ?, deadline = ?, priority = ?, estimated_minutes = ?, status = ?
         WHERE id = ?
         """
+        conn=sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(sql, (
             self.title,
@@ -40,24 +41,26 @@ class Event:
         conn.commit()
 
 
-    def get_eventbyid(conn, self):
+    def get_eventbyid(db_path, self):
+
         sql = "SELECT * FROM event WHERE id = ?"
         cursor = conn.cursor()
         cursor.execute(sql, (self.id,))
         row = cursor.fetchone()
-
+        conn=sqlite3.connect(db_path)
         if row is None:
             return None
 
         return Event(*row)
 
 
-    def get_eventbyuser(conn, self):
+    def get_eventbyuser(db_path, self):
         sql = """
         SELECT * FROM event
         WHERE user = ?
         AND date(deadline) >= date('now')
         """
+        conn=sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(sql, (self.user,))
         rows = cursor.fetchall()
@@ -68,12 +71,13 @@ class Event:
 
         return events
     
-    def get_eventbytask(conn,self):
+    def get_eventbytask(db_path,self):
         sql='''
         SELECT * FROM event
         WHERE task = ?
         AND date(deadline) >= date('now')
         '''
+        conn=sqlite3.connect(db_path)
         cursor=conn.cursor()
         cursor.execute(sql,(self.task,))
         rows=cursor.fetchall()

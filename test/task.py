@@ -48,15 +48,23 @@ class Task:
         return Task (task_id,task_deadline, task_priority)
     
 
-    def get_taskbyuser(conn, user_id):
+    def get_taskbyuser(user_id,db_path):
         sql = """
         SELECT id, user, title, deadline, priority, estimated_minutes, status
         FROM task
         WHERE user = ?
         AND date(deadline) >= date('now')
         """
+        conn=sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(sql, (user_id,))
-        return cursor.fetchall()
+        row=cursor.fetchone()
+
+        if row is None:
+            return None
+        
+        task_id, task_deadline,task_priority = row
+        conn.close()
+        return Task (task_id,task_deadline, task_priority)       
 
         
