@@ -1,10 +1,10 @@
 import sqlite3
 from task import Task
 class User:
-    def __init__(self,id:int,email:str,name:str):
-        self.id=id
-        self.email=email
-        self.name=name
+    def __init__(self, id: int, name: str, email: str):
+        self.id = id
+        self.name = name
+        self.email = email
 
     # def __init__(self,email:str,name:str):
     #     self.email=email
@@ -50,20 +50,19 @@ class User:
 
     #TODO: create get_user_by_email def  
     def get_user_by_email(self, db_path):
-       
-        sql = "SELECT * FROM user WHERE email= ?"
+        sql = "SELECT * FROM user WHERE email = ?"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(sql, (self.email,))
-        rows = cursor.fetchone()
-    
+        row = cursor.fetchone()
+
         if row is None:
+            conn.close()
             return None
-        
+
         user_id, user_name, user_email = row
         conn.close()
-        return User (user_id,user_name, user_email)
-
+        return User(user_id, user_email, user_name)
     def process_user(self, db_path):
         select_user =  self.get_user_by_email(db_path)
         if select_user is None:

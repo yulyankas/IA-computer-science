@@ -1,8 +1,8 @@
 from datetime import datetime,date,time
 import sqlite3
-from user import User
+# from user import User
 class Task:
-    def __init__(self,id:int,user:User,title:str,deadline:date,priority:int,estimated_minutes:int,status:str):
+    def __init__(self,id:int,user,title:str,deadline:date,priority:int,estimated_minutes:int,status:str):
         self.id=id
         self.user=user
         self.title=title

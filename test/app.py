@@ -14,6 +14,7 @@ import google_auth_oauthlib.flow
 import pathlib
 import os
 from UserRepository import UserRepository
+from flask import render_template
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"]="1" #allows google auth to work on local 
 
 app = flask.Flask(__name__)
@@ -67,24 +68,26 @@ def index():
     #     userId = user.id
     #     strResult+=str(user.id)+" "+user.name+" "+user.email+"\r\n"
     #return "111"+strResult
-    
-    user=flask.session.get("user")
-    appUser = User()
-    if not user:
-        res = str("<a href=\"/login\">Enter with Google</a>")
-    else:
-        appUser = UserRepository.get_user_by_email (DB_PATH, user.get ("email"))
-        #res = user.get ("name","user")
-        res = str(appUser.name, appUser.email)
-        tasks = appUser.get_user_tasks(DB_PATH)
-        for task in tasks:
-            res+="\n"+task.title
 
-    
-    
-    
-    return "welcome"+"\n"+res+ "\n<a href=\"\\dashboard\">Go to dashboard</>"
+    session_user = flask.session.get("user")
 
+    # TEMP: if not logged in, create a fake session user for testing
+    if not session_user:
+        session_user = {
+            "email": "test@example.com",
+            "name": "Test Student"
+        }
+        flask.session["user"] = session_user
+
+    app_user = None
+    tasks = []
+
+    if session_user:
+        app_user = UserRepository.get_user_by_email(DB_PATH, session_user.get("email"))
+        if app_user:
+            tasks = app_user.get_user_tasks(DB_PATH)
+
+    return render_template("dashboard.html", user=app_user, tasks=tasks)
 
 @app.route("/login")
 def login():
@@ -173,6 +176,7 @@ def get_user_info(access_token):
     if response.ok:
         return response.json()
     return None
+
 
  
 

@@ -1,13 +1,27 @@
-<!doctype html>
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <body>
-            <div>{{user.name}}</div>
+<head>
+    <meta charset="UTF-8">
+    <title>Study Scheduler – Dashboard</title>
+</head>
+<body>
+    <h1>Study Scheduler</h1>
 
+    {% if user %}
+        <p>Welcome back,{{ user.name }}</p>
+    {% else %}
+        <p>You are not logged in.</p>
+        <a href="{{ url_for('login') }}">Login with Google</a>
+    {% endif %}
 
-        </body>
-
-
-    </head>
-
+    {% if tasks %}
+        <h2>Your tasks</h2>
+        <ul>
+            {% for task in tasks %}
+                <li>{{ task.title }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</body>
 </html>
