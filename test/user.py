@@ -78,17 +78,22 @@ class User:
         SELECT id, user, title, deadline, priority, estimated_minutes, status
         FROM task
         WHERE user = ?
-        AND date(deadline) >= date('now')
+        
         """
+
+        print (sql)
+        print("ID="+str(self.id))
         conn=sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(sql, (self.id,))
-        rows=cursor.fetchone()
+        rows=cursor.fetchall()
+        print(len(rows))
 
         tasks = []
         if rows is None:
             return None
         for row in rows:
+            print("row="+str(row))
             task_id, task_user, task_title, task_deadline, task_priority, task_estimated,task_status = row
             tasks.append (Task (task_id, self, task_title, task_deadline, task_priority,task_estimated, task_status))
         return tasks

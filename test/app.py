@@ -1,5 +1,6 @@
 #from flask import Flask
 import flask
+from taskController import TaskController
 from user import User
 from task import Task
 from event import Event
@@ -14,7 +15,7 @@ import google_auth_oauthlib.flow
 import pathlib
 import os
 from UserRepository import UserRepository
-from flask import render_template
+from flask import render_template, request, redirect
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"]="1" #allows google auth to work on local 
 
 app = flask.Flask(__name__)
@@ -54,22 +55,9 @@ def generate_code_verifier (length=64): #secure string for Google OAuth login
 
 @app.route("/")
 def index():
-    # u1=User (1234,"tupaja@pl","Julianna")
-    # taskTitle = "task1"
-    # t1=Task(1, u1, taskTitle, date(2026,6,30), 3, 90,"zhopa")
-    # s=str(u1.email+u1.name)
-    # t = t1.__str__()
-    # event3= Event(809,t1,datetime(2026,2,18,9,10), datetime(2026,2,18,9,30), "gauno")
-    # users: List [User] = list_users()
-    # print ("Place0002",users, users.__str__)
-    # strResult = str(" ")
-    # for user in users:
-    #     print ("Place0003",user.__str__())
-    #     userId = user.id
-    #     strResult+=str(user.id)+" "+user.name+" "+user.email+"\r\n"
-    #return "111"+strResult
-
+   
     session_user = flask.session.get("user")
+    print (session_user)
 
     # TEMP: if not logged in, create a fake session user for testing
     if not session_user:
@@ -83,11 +71,27 @@ def index():
     tasks = []
 
     if session_user:
+       
         app_user = UserRepository.get_user_by_email(DB_PATH, session_user.get("email"))
         if app_user:
             tasks = app_user.get_user_tasks(DB_PATH)
+            session_user["db_id"]=app_user.id
+            flask.session["user"]=session_user
+            print (flask.session.get("user"))
 
     return render_template("dashboard.html", user=app_user, tasks=tasks)
+
+@app.route ("/add-task", methods={"POST"})
+def add_task():
+    title = request.form.get("title")
+    prioroty = request.form.get("priority")
+    deadline = request.form.get("deadline")
+    estimated_minutes = request.form.get("estimated_minutes")
+    user_id = flask.session.get("user").get("db_id")
+    TaskController.create_task_from_form (title,prioroty,deadline,estimated_minutes,user_id,DB_PATH)
+    return redirect("/")
+
+
 
 @app.route("/login")
 def login():

@@ -23,5 +23,77 @@
             {% endfor %}
         </ul>
     {% endif %}
+
+        {% if tasks %}
+        <h2>Your tasks table</h2>
+        <table border="2">
+            <tr>
+                <th>Title</th>
+                <th>Deadline</th>
+                <th>Priority</th>
+                <th>Est. time, min</th>
+            </tr>
+
+            {% for task in tasks %}
+                <tr>
+                    <td>{{ task.title }}</td>
+                    <td>{{ task.deadline }}</td>
+                    <td>{{ task.priority }}</td>
+                    <td>{{ task.estimated_minutes }}</td>
+                </tr>
+                
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <button type="button" onclick="document.getElementById('taskDialog').showModal()">
+        Add task
+    </button>
+
+    <dialog id="taskDialog">
+        <form action="/add-task" method="POST">
+            <h2>ADD TASK HERE JOPTA</h2>
+            <p>
+                <label>
+                    Title: <br>
+                    <input type="text" name="title" required>
+                </label>
+            </p>
+
+            <p>
+                <label>
+                    Priority (from 1 to 5): <br>
+                    <select  name="priority" required>
+                        <option value="">Select</option>
+                        <option value="1">Very high</option>
+                        <option value="2">High</option>
+                        <option value="3">Medium</option>
+                        <option value="4">Low</option>
+                        <option value="5">Very low</option>
+                    </select>
+                </label>
+            </p>
+
+
+            <p>
+                <label>
+                    Deadline: <br>
+                    <input type="date" name="deadline" required>
+                </label>
+            </p>
+            <p>
+                <label>
+                    Etimated time (min): <br>
+                    <input type="number", name="estimated_minutes" required>
+                </label>
+                
+            </p>
+
+            <button type="submit">ADD</button>
+
+        </form>
+        
+
+    </dialog>
 </body>
 </html>
