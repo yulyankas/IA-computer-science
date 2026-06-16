@@ -68,3 +68,25 @@ class Task:
         return Task (task_id,task_deadline, task_priority)       
 
         
+    @staticmethod
+    def delete_task(task_id,db_path): 
+        sql = "DELETE FROM task WHERE id = ?"
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(sql, (task_id,))
+        conn.commit()
+        conn.close()
+
+
+    @staticmethod
+    def update_task(task_id, title, deadline, priority, estimated_minutes, db_path):
+        sql = """
+            UPDATE task
+            SET title = ?, deadline = ?, priority = ?, estimated_minutes = ?
+            WHERE id = ?
+        """
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(sql, (title, deadline, priority, estimated_minutes, task_id))
+        conn.commit()
+        conn.close()

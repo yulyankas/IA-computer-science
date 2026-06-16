@@ -35,14 +35,32 @@
             </tr>
 
             {% for task in tasks %}
-                <tr>
-                    <td>{{ task.title }}</td>
-                    <td>{{ task.deadline }}</td>
-                    <td>{{ task.priority }}</td>
-                    <td>{{ task.estimated_minutes }}</td>
-                </tr>
+    <tr>
+        <td>{{ task.title }}</td>
+        <td>{{ task.deadline }}</td>
+        <td>{{ task.priority }}</td>
+        <td>{{ task.estimated_minutes }}</td>
+
+        <td>
+            <form action="{{ url_for('delete_task', task_id=task.id) }}" method="POST">
+                <button type="submit">Delete</button>
+            </form>
+        </td>
+
+        <td>
+            <form action="{{ url_for('edit_task') }}" method="POST">
+                <input type="hidden" name="task_id" value="{{ task.id }}">
+                <input type="text" name="title" value="{{ task.title }}">
+                <input type="date" name="deadline" value="{{ task.deadline }}">
+                <input type="number" name="priority" value="{{ task.priority }}">
+                <input type="number" name="estimated_minutes" value="{{ task.estimated_minutes }}">
+                <button type="submit">Save</button>
+            </form>
+        </td>
+    </tr>
+{% endfor %}
                 
-            {% endfor %}
+            
         </table>
     {% endif %}
 
@@ -52,7 +70,7 @@
 
     <dialog id="taskDialog">
         <form action="/add-task" method="POST">
-            <h2>ADD TASK HERE JOPTA</h2>
+            <h2>ADD TASK HERE </h2>
             <p>
                 <label>
                     Title: <br>

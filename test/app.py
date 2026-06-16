@@ -16,6 +16,10 @@ import pathlib
 import os
 from UserRepository import UserRepository
 from flask import render_template, request, redirect
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from datetime import datetime, timedelta, timezone
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"]="1" #allows google auth to work on local 
 
 app = flask.Flask(__name__)
@@ -28,7 +32,8 @@ SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
-] 
+    "https://www.googleapis.com/auth/calendar",
+]
 DB_PATH = Path(__file__).resolve().parent.parent/"DB"/"study_schedule_DB01.db"
 
 # def connectDB():#a method which connects to DB and returns connection object
@@ -59,13 +64,13 @@ def index():
     session_user = flask.session.get("user")
     print (session_user)
 
-    # TEMP: if not logged in, create a fake session user for testing
-    if not session_user:
-        session_user = {
-            "email": "test@example.com",
-            "name": "Test Student"
-        }
-        flask.session["user"] = session_user
+    # # TEMP: if not logged in, create a fake session user for testing
+    # if not session_user:
+    #     session_user = {
+    #         "email": "test@example.com",
+    #         "name": "Test Student"
+    #     }
+    #     flask.session["user"] = session_user
 
     app_user = None
     tasks = []
@@ -81,7 +86,7 @@ def index():
 
     return render_template("dashboard.html", user=app_user, tasks=tasks)
 
-@app.route ("/add-task", methods={"POST"})
+@app.route ("/add-task", methods={"POST"}) #reads data and send it to database http
 def add_task():
     title = request.form.get("title")
     prioroty = request.form.get("priority")
@@ -91,7 +96,7 @@ def add_task():
     TaskController.create_task_from_form (title,prioroty,deadline,estimated_minutes,user_id,DB_PATH)
     return redirect("/")
 
-
+#creates task in database
 
 @app.route("/login")
 def login():
@@ -109,7 +114,7 @@ def login():
 
     return flask.redirect (authotization_url)
 
-
+#say to google what permissions we need and where it should redirect us after login.
 def createFlow (state=None, code_verifier=None):
     flow=google_auth_oauthlib.flow.Flow.from_client_secrets_file (
         str(CLIENTS_SECRET_FILE),
@@ -158,7 +163,7 @@ def oauth2callback():
         "picture": user_info.get("picture"),
     }
 
-    flask.session.pop("code_verifier", None)
+    flask.session.pop("code_verifier", None) #i dont want google id
     
     db_user = User(
     None,
@@ -167,10 +172,10 @@ def oauth2callback():
     )
     db_user=db_user.process_user(DB_PATH);
     print (db_user.__str__)
-    t1=Task(123,db_user,"llalalala",datetime(2026,2,18,9,10),1,90,"urgent")
-    print(t1)
+    # t1=Task(123,db_user,"llalalala",datetime(2026,2,18,9,10),1,90,"urgent")
+    # print(t1)
     return flask.redirect("/")
-
+#request the loggedin user profile data.
 def get_user_info(access_token):
     response = requests.get(
         "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -182,11 +187,64 @@ def get_user_info(access_token):
     return None
 
 
- 
+@app.route("/delete-task/<int:task_id>", methods=["POST"])
+def delete_task(task_id):
+    Task.delete_task(task_id, DB_PATH)
+    return redirect("/")
 
 
+
+@app.route("/edit-task", methods=["POST"])
+def edit_task():
+    task_id = request.form.get("task_id")
+    title = request.form.get("title")
+    deadline = request.form.get("deadline")
+    priority = request.form.get("priority")
+    estimated_minutes = request.form.get("estimated_minutes")
+
+    Task.update_task(task_id, title, deadline, priority, estimated_minutes, DB_PATH)
+    return redirect("/")
     
+@app.route("/create-test-event")
+def create_test_event():
+    creds_data=flask.session.get("credentials")
+    if not creds_data:
+        return redirect("/login")
+    creds = Credentials(
+        token=creds_data["token"],
+        refresh_token=creds_data["refresh_token"],
+        token_uri=creds_data["token_uri"],
+        client_id=creds_data["client_id"],
+        client_secret=creds_data["client_secret"],
+        scopes=creds_data["scopes"],
+    )
+    try:
+        service = build("calendar", "v3", credentials=creds)
+
+        start_time = datetime.now(timezone.utc) + timedelta(minutes=10)
+        end_time = start_time + timedelta(minutes=30)
+
+        event = {
+            "summary": "Study Planner test event",
+            "description": "Created from Flask app",
+            "start": {
+                "dateTime": start_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "end": {
+                "dateTime": end_time.isoformat(),
+                "timeZone": "UTC",
+            },
+        }
+
+        created = service.events().insert(calendarId="primary", body=event).execute()
+        return f"Created event: <a href='{created.get('htmlLink')}' target='_blank'>open in Google Calendar</a>"
+
+    except HttpError as error:
+        return f"An error occurred: {error}", 400
+
 
 
 app.run(debug=True)
+
 

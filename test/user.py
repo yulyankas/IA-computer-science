@@ -63,6 +63,8 @@ class User:
         user_id, user_name, user_email = row
         conn.close()
         return User(user_id, user_email, user_name)
+    
+    
     def process_user(self, db_path):
         select_user =  self.get_user_by_email(db_path)
         if select_user is None:
