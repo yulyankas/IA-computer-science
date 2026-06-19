@@ -80,22 +80,147 @@ def index():
         app_user = UserRepository.get_user_by_email(DB_PATH, session_user.get("email"))
         if app_user:
             tasks = app_user.get_user_tasks(DB_PATH)
+            ordered_tasks = sort_tasks_by_priority_and_deadline(tasks)
+
+            for task in ordered_tasks:
+             print("ORDER:", task.title, task.priority, task.deadline)
             session_user["db_id"]=app_user.id
             flask.session["user"]=session_user
             print (flask.session.get("user"))
 
     return render_template("dashboard.html", user=app_user, tasks=tasks)
 
-@app.route ("/add-task", methods={"POST"}) #reads data and send it to database http
+def create_calendar_event_from_task(title, deadline, estimated_minutes):
+    creds_data = flask.session.get("credentials")
+    if not creds_data:
+        return None
+
+    creds = Credentials(
+        token=creds_data["token"],
+        refresh_token=creds_data["refresh_token"],
+        token_uri=creds_data["token_uri"],
+        client_id=creds_data["client_id"],
+        client_secret=creds_data["client_secret"],
+        scopes=creds_data["scopes"],
+    )
+
+    service = build("calendar", "v3", credentials=creds)
+
+    tz = "Europe/Warsaw"
+    now = datetime.now(timezone.utc)
+
+    deadline_dt = datetime.fromisoformat(deadline).replace(
+        hour=23,
+        minute=59,
+        second=0,
+        microsecond=0,
+        tzinfo=timezone.utc,
+    )
+
+    duration = timedelta(minutes=int(estimated_minutes))
+
+    events_result = service.events().list(
+        calendarId="primary",
+        timeMin=now.isoformat(),
+        timeMax=deadline_dt.isoformat(),
+        singleEvents=True,
+        orderBy="startTime",
+        timeZone=tz,
+    ).execute()
+
+    events = events_result.get("items", [])
+    candidate_start = now
+
+    for event in events:
+        start_raw = event.get("start", {}).get("dateTime")
+        end_raw = event.get("end", {}).get("dateTime")
+
+        if not start_raw or not end_raw:
+            continue
+
+        event_start = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+        event_end = datetime.fromisoformat(end_raw.replace("Z", "+00:00"))
+
+        if candidate_start + duration <= event_start:
+            break
+
+        if event_end > candidate_start:
+            candidate_start = event_end
+
+    if candidate_start + duration > deadline_dt:
+        return None
+
+    study_event = {
+        "summary": f"Study: {title}",
+        "description": f"Preparation block before deadline: {deadline}",
+        "start": {
+            "dateTime": candidate_start.isoformat(),
+            "timeZone": tz,
+        },
+        "end": {
+            "dateTime": (candidate_start + duration).isoformat(),
+            "timeZone": tz,
+        },
+    }
+
+    created_event = service.events().insert(
+        calendarId="primary",
+        body=study_event,
+    ).execute()
+
+    return {
+        "id": created_event.get("id"),
+        "htmlLink": created_event.get("htmlLink"),
+        "start": candidate_start.isoformat(),
+        "end": (candidate_start + duration).isoformat(),
+    }
+@app.route("/add-task", methods=["POST"])
 def add_task():
     title = request.form.get("title")
-    prioroty = request.form.get("priority")
+    priority = request.form.get("priority")
     deadline = request.form.get("deadline")
     estimated_minutes = request.form.get("estimated_minutes")
-    user_id = flask.session.get("user").get("db_id")
-    TaskController.create_task_from_form (title,prioroty,deadline,estimated_minutes,user_id,DB_PATH)
-    return redirect("/")
 
+    user_id = flask.session.get("user").get("db_id")
+
+    if not deadline:
+        return "Deadline is required", 400
+
+    deadline_date = datetime.fromisoformat(deadline).date()
+    today = datetime.today().date()
+
+    if deadline_date < today:
+        return "You cannot add a task with a past deadline.", 400
+    
+
+    if not title or not title.strip():
+        return "Title is required.", 400
+
+    try:
+        priority_value = int(priority)
+        estimated_minutes_value = int(estimated_minutes)
+    except (TypeError, ValueError):
+        return "Priority and estimated minutes must be numbers.", 400
+
+    if priority_value < 1 or priority_value > 5:
+        return "Priority must be between 1 and 5.", 400
+
+    if estimated_minutes_value <= 0:
+        return "Estimated minutes must be greater than 0.", 400
+
+    TaskController.create_task_from_form(
+        title,
+        priority_value,
+        deadline,
+        estimated_minutes_value,
+        user_id,
+        DB_PATH
+    )
+
+    create_calendar_event_from_task(title, deadline, estimated_minutes)
+
+    return redirect("/")
+    
 #creates task in database
 
 @app.route("/login")
@@ -201,9 +326,27 @@ def edit_task():
     deadline = request.form.get("deadline")
     priority = request.form.get("priority")
     estimated_minutes = request.form.get("estimated_minutes")
+    if not deadline:
+        return "Deadline is required",400
+    deadline_date=datetime.fromisoformat(deadline).date()
+    today=datetime.today().date()
+    if not title or not title.strip():
+        return "Title is required.", 400
 
-    Task.update_task(task_id, title, deadline, priority, estimated_minutes, DB_PATH)
-    return redirect("/")
+    try:
+        priority_value = int(priority)
+        estimated_minutes_value = int(estimated_minutes)
+    except (TypeError, ValueError):
+        return "Priority and estimated minutes must be numbers.", 400
+
+    if priority_value < 1 or priority_value > 5:
+        return "Priority must be between 1 and 5.", 400
+
+    if estimated_minutes_value <= 0:
+        return "Estimated minutes must be greater than 0.", 400
+    if deadline_date<today:
+        return "You cane't update task to a past"
+    Task.update_task(task_id, title, deadline, priority_value, estimated_minutes_value, DB_PATH)
     
 @app.route("/create-test-event")
 def create_test_event():
@@ -243,6 +386,25 @@ def create_test_event():
     except HttpError as error:
         return f"An error occurred: {error}", 400
 
+def sort_tasks_by_priority_and_deadline(tasks):
+    return sorted(
+        tasks,
+        key=lambda task: (int(task.priority), task.deadline)
+    )
+
+def schedule_tasks_in_priority_order(tasks):
+    ordered_tasks = sort_tasks_by_priority_and_deadline(tasks)
+
+    results = []
+    for task in ordered_tasks:
+        created_event = create_calendar_event_from_task(
+            task.title,
+            task.deadline,
+            task.estimated_minutes
+        )
+        results.append((task, created_event))
+
+    return results
 
 
 app.run(debug=True)
